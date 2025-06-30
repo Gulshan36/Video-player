@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Universal Video Player</title>
+  <!-- Video.js CSS -->
+  <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #player-container {
+      margin-top: 20px;
+    }
+    input[type="text"] {
+      width: 300px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Universal Video Player</h1>
+  <input type="text" id="videoUrl" placeholder="Paste video URL (YouTube, MP4, Mdisk, etc.)">
+  <button onclick="handleUrl()">Play Video</button>
+
+  <div id="player-container"></div>
+
+  <!-- Video.js Script -->
+  <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+  <script>
+    // Function to detect YouTube URLs
+    const isYouTube = (url) => {
+      return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/.test(url);
+    };
+
+    // Function to extract YouTube Video ID
+    const getYouTubeVideoId = (url) => {
+      const regex = /(?:v=|\/)([a-zA-Z0-9_-]{11})/;
+      return url.match(regex)?.[1] || null;
+    };
+
+    // Function to detect Mdisk URLs
+    const isMdisk = (url) => {
+      return /^(https?:\/\/)?(www\.)?mdisk\.me\/.+/.test(url);
+    };
+
+    // Function to resolve Mdisk URL to the actual video URL
+    const resolveMdiskUrl = async (url) => {
+      try {
+        const response = await fetch(url, { redirect: 'follow' });
+        return response.url; // Returns the final redirected URL
+      } catch (error) {
+        console.error('Error resolving Mdisk URL:', error);
+        return null;
+      }
+    };
+
+    // Function to handle the URL and embed the video
+    async function handleUrl() {
+      const url = document.getElementById('videoUrl').value.trim();
+      const container = document.getElementById('player-container');
+      container.innerHTML = ''; // Clear previous content
+
+      if (!url) {
+        alert('Please enter a valid video URL.');
+        return;
+      }
+
+      if (isYouTube(url)) {
+        // Handle YouTube URLs
+        const videoId = getYouTubeVideoId(url);
+        if (videoId) {
+          container.innerHTML = `
+            <iframe
+              width="560"
+              height="315"
+              src="https://www.youtube.com/embed/${videoId}"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          `;
+        } else {
+          container.innerHTML = 'Invalid YouTube URL.';
+        }
+      } else if (isMdisk(url)) {
+        // Handle Mdisk URLs
+        container.innerHTML = 'Resolving Mdisk link...';
+        const resolvedUrl = await resolveMdiskUrl(url);
+        if (resolvedUrl) {
+          container.innerHTML = `
+            <video id="universal-player" class="video-js vjs-default-skin" controls width="560" height="315">
+              <source src="${resolvedUrl}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+          `;
+          // Initialize Video.js player
+          videojs('universal-player');
+        } else {
+          container.innerHTML = 'Failed to resolve Mdisk link.';
+        }
+      } else if (/\.(mp4|m3u8|mkv|webm)$/.test(url)) {
+        // Handle direct video links (MP4, HLS, etc.)
+        container.innerHTML = `
+          <video id="universal-player" class="video-js vjs-default-skin" controls width="560" height="315">
+            <source src="${url}" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        `;
+        // Initialize Video.js player
+        videojs('universal-player');
+      } else {
+        // Unsupported URL
+        container.innerHTML = 'Unsupported video URL. Please try a YouTube, Mdisk, or direct video link.';
+      }
+    }
+  </script>
+</body>
+</html>
